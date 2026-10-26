@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OS Visualizer — Activity 2 | Round Robin with Context Switching</title>
+<style>
+:root{--bg:#080d18;--panel:#111a2b;--panel2:#172238;--line:#2a3853;--text:#e8eef9;--muted:#9aa9c3;--accent:#60a5fa;--green:#34d399;--amber:#fbbf24;--red:#fb7185}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#13213b 0,#080d18 58%);color:var(--text);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1240px;margin:auto;padding:28px 20px 60px}.hero{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:22px}.eyebrow{color:var(--accent);font-size:.78rem;font-weight:800;letter-spacing:.15em;text-transform:uppercase}.hero h1{font-size:clamp(1.8rem,4vw,2.8rem);line-height:1.1;margin:8px 0}.hero p{color:var(--muted);max-width:720px;margin:10px 0}.tag{border:1px solid #35527b;background:#10203a;color:#bfdbfe;padding:8px 12px;border-radius:99px;font-size:.8rem;white-space:nowrap}
+.grid{display:grid;grid-template-columns:1fr 1.3fr;gap:16px}.card{background:linear-gradient(145deg,rgba(20,31,51,.97),rgba(13,21,36,.97));border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 12px 32px #0002;min-width:0}.card h2{font-size:1.12rem;margin:0 0 14px}.sub{color:var(--muted);font-size:.88rem}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;padding:10px 9px;border-bottom:1px solid #26344d}th{color:var(--muted);font-weight:650;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}td input{width:75px;background:#0a1221;color:var(--text);border:1px solid #35445f;border-radius:8px;padding:7px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:750;cursor:pointer;background:var(--accent);color:#061224}.btn.secondary{background:#23334e;color:#e7eefc;border:1px solid #3a4b68}.btn:hover{filter:brightness(1.1)}.quantums{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 6px}.qbtn{background:#0a1221;border:1px solid #34445f;color:var(--text);padding:9px 13px;border-radius:9px;cursor:pointer}.qbtn.active{border-color:var(--accent);background:#102b4d;color:#dbeafe}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}.stat{background:#0b1424;border:1px solid #253651;border-radius:12px;padding:13px}.stat .label{color:var(--muted);font-size:.76rem}.stat .value{font-size:1.35rem;font-weight:800;margin-top:4px}
+.section{margin-top:18px}.sectionhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}.sectionhead h2{margin:0}.chart{padding:16px 12px 12px;border-radius:12px;background:#0a1220;border:1px solid #24334c;overflow-x:auto}.timeline{min-width:600px}.barrow{display:flex;align-items:center;gap:10px;margin:10px 0}.barlabel{width:74px;flex-shrink:0;color:var(--muted);font-size:.8rem}.bar{height:42px;display:flex;flex:1;min-width:0;border-radius:8px;overflow:hidden;background:#18243a}.segment{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;border-right:1px solid #09111f;color:#07101d;font-weight:850;font-size:.75rem;overflow:hidden}.segment span{white-space:nowrap}.segment.cs{background:repeating-linear-gradient(135deg,#fbbf24,#fbbf24 6px,#d99a16 6px,#d99a16 12px);color:#211604}.axis{display:flex;justify-content:space-between;margin:7px 0 0 84px;color:var(--muted);font-size:.75rem}.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:.8rem;margin-top:12px}.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.metrics{margin-top:12px}.pill{display:inline-block;padding:3px 8px;border-radius:99px;font-size:.75rem;font-weight:750;background:#20304b;color:#cfe0ff}.note{border-left:3px solid var(--accent);padding:11px 14px;background:#0b1729;border-radius:0 10px 10px 0;color:#c9d7ec;margin-top:12px}.compare{margin-top:18px}.compare td,.compare th{padding:12px}.winner{color:var(--green);font-weight:800}.small{font-size:.8rem;color:var(--muted)}.empty{color:var(--muted);padding:20px;text-align:center}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{display:block}.tag{display:inline-block;margin-top:8px}}@media(max-width:450px){main{padding:18px 12px}.card{padding:15px}.stats{gap:7px}.stat{padding:10px}.stat .value{font-size:1.15rem}}
+</style>
+</head>
+<body><main>
+<header class="hero"><div><div class="eyebrow">Operating Systems · Practical Activity 2</div><h1>Round Robin Scheduler</h1><p>Climate emergency response centre — simulate time-sensitive services with a <b>1 ms context-switching overhead</b>. Compare time quantum 2 ms against 4 ms.</p></div><div class="tag">SDG 11 · SDG 13</div></header>
+<div class="grid">
+<section class="card"><h2>01 / Workload configuration</h2><p class="sub">Edit arrival and burst times if needed. The assignment's values are preloaded.</p>
+<div class="tablewrap"><table id="inputTable"><thead><tr><th>Process / service</th><th>Arrival</th><th>Burst</th></tr></thead><tbody>
+<tr><td><b>P1</b><br><span class="small">Flood-warning analysis</span></td><td><input type="number" min="0" step="1" value="0" id="a0"></td><td><input type="number" min="1" step="1" value="5" id="b0"></td></tr>
+<tr><td><b>P2</b><br><span class="small">Air-quality alert generation</span></td><td><input type="number" min="0" step="1" value="1" id="a1"></td><td><input type="number" min="1" step="1" value="4" id="b1"></td></tr>
+<tr><td><b>P3</b><br><span class="small">Emergency evacuation route update</span></td><td><input type="number" min="0" step="1" value="2" id="a2"></td><td><input type="number" min="1" step="1" value="3" id="b2"></td></tr>
+<tr><td><b>P4</b><br><span class="small">Renewable-grid status monitoring</span></td><td><input type="number" min="0" step="1" value="3" id="a3"></td><td><input type="number" min="1" step="1" value="2" id="b3"></td></tr>
+</tbody></table></div>
+<div class="quantums"><button class="qbtn active" data-q="2">Time quantum: 2 ms</button><button class="qbtn" data-q="4">Time quantum: 4 ms</button></div>
+<div class="controls"><button class="btn" id="runBtn">▶ Run simulation</button><button class="btn secondary" id="compareBtn">Compare 2 ms vs 4 ms</button><button class="btn secondary" id="resetBtn">Reset inputs</button></div>
+<div class="note"><b>Scheduling rule:</b> when the CPU must move from one process to a different process, add a separate 1 ms context-switch interval. Do not add overhead before the first process or after the final process. Arrivals during a switch enter the ready queue before the next dispatch.</div>
+</section>
+<section class="card"><div class="sectionhead"><h2>02 / Simulation output</h2><span class="pill" id="activePill">Quantum 2 ms</span></div><div class="stats" id="stats"></div><div class="section"><div class="sectionhead"><h2>Gantt chart</h2><span class="small" id="chartCaption">Execution and context-switch intervals</span></div><div class="chart" id="chart"></div><div class="legend"><span><i class="dot" style="background:#60a5fa"></i>P1</span><span><i class="dot" style="background:#34d399"></i>P2</span><span><i class="dot" style="background:#c084fc"></i>P3</span><span><i class="dot" style="background:#f472b6"></i>P4</span><span><i class="dot" style="background:#fbbf24"></i>Context switch (1 ms)</span></div></div><div class="section metrics"><h2>Per-process metrics</h2><div class="tablewrap" id="metricsTable"></div></div></section>
+</div>
+
+<section class="card section" id="playbackCard">
+  <div class="sectionhead"><h2>03 / Live, second-by-second playback</h2><span class="pill" id="playStatus">Ready</span></div>
+  <p class="sub">Press Play to advance one simulated millisecond per real second. Pause, step forward, or reset to explain every CPU action during your demonstration.</p>
+  <div class="stats">
+    <div class="stat"><div class="label">Simulation clock</div><div class="value" id="clockValue">0 ms</div></div>
+    <div class="stat"><div class="label">CPU activity now</div><div class="value" id="cpuNow" style="font-size:1rem">Ready</div></div>
+    <div class="stat"><div class="label">Selected process</div><div class="value" id="selectedNow">—</div></div>
+    <div class="stat"><div class="label">Time remaining</div><div class="value" id="remainNow">—</div></div>
+  </div>
+  <div class="controls" style="margin-top:4px">
+    <button class="btn" id="playBtn">▶ Play</button>
+    <button class="btn secondary" id="stepBtn">Step +1 ms</button>
+    <button class="btn secondary" id="pauseBtn">Ⅱ Pause</button>
+    <button class="btn secondary" id="playResetBtn">↺ Restart playback</button>
+    <label class="sub" style="display:flex;align-items:center;gap:8px">Playback speed
+      <select id="speedSelect" style="background:#0a1221;color:var(--text);border:1px solid #35445f;border-radius:8px;padding:8px">
+        <option value="1000">1 simulated ms / second</option>
+        <option value="700">1 simulated ms / 0.7 sec</option>
+        <option value="1500">1 simulated ms / 1.5 sec</option>
+      </select>
+    </label>
+  </div>
+  <div class="section">
+    <div class="sectionhead"><h2>Playback timeline</h2><span class="small" id="progressLabel">0% complete</span></div>
+    <div style="height:9px;background:#24334c;border-radius:99px;overflow:hidden"><div id="progressBar" style="height:100%;width:0;background:var(--accent);transition:width .2s"></div></div>
+  </div>
+  <div class="grid" style="margin-top:14px">
+    <div class="card" style="padding:15px;background:#0a1220">
+      <h2>Ready queue</h2><div id="queueNow" style="display:flex;gap:8px;flex-wrap:wrap"><span class="small">Waiting for simulation…</span></div>
+      <p class="small" style="margin-bottom:0">Queue is shown after the current millisecond's events have been processed.</p>
+    </div>
+    <div class="card" style="padding:15px;background:#0a1220">
+      <h2>Process status</h2><div class="tablewrap" id="processStatusNow"></div>
+    </div>
+  </div>
+  <div class="section">
+    <h2>What is happening right now?</h2>
+    <div class="note" id="eventNarration" style="font-size:1rem">Press Play or Step +1 ms to start the simulation and see a plain-language explanation of each event.</div>
+  </div>
+</section>
+
+<section class="card compare"><div class="sectionhead"><h2>04 / Quantum comparison</h2><span class="small">Generated from the current workload</span></div><div class="tablewrap" id="comparison"><div class="empty">Click “Compare 2 ms vs 4 ms” to generate the comparison.</div></div><div class="note" id="recommendation">The recommendation will appear after comparison. Consider response time for emergency services alongside overhead and waiting time.</div></section>
+<section class="card section"><h2>05 / How to explain it in your demonstration</h2><ol>
+<li><b>Round Robin:</b> each ready process receives the CPU for at most one time quantum. If it is not complete, it returns to the end of the ready queue.</li>
+<li><b>Context-switch overhead:</b> switching to a different process consumes 1 ms in this assignment. That interval is shown separately and does not count as useful process execution.</li>
+<li><b>Completion time (CT):</b> the time at which a process finishes.</li>
+<li><b>Turnaround time (TAT):</b> CT − arrival time.</li>
+<li><b>Waiting time (WT):</b> TAT − burst time.</li>
+<li><b>Response time (RT):</b> first CPU start time − arrival time.</li>
+<li><b>CPU efficiency:</b> total burst time ÷ total elapsed schedule time × 100%. Context-switch intervals are included in elapsed time.</li>
+<li>Compare quantum 2 ms and 4 ms. A smaller quantum usually gives processes more frequent turns but can add more context-switch overhead; a larger quantum can reduce overhead but may delay other processes.</li>
+</ol><p class="small">Note: this is a scheduling model, not a real operating-system kernel. Context-switch duration is assumed constant at 1 ms, as specified in the assignment.</p></section>
+</main>
+<script>
+const colors=['#60a5fa','#34d399','#c084fc','#f472b6'];
+let selectedQ=2,lastRuns={};
+document.querySelectorAll('.qbtn').forEach(btn=>btn.addEventListener('click',()=>{selectedQ=+btn.dataset.q;document.querySelectorAll('.qbtn').forEach(b=>b.classList.toggle('active',b===btn));document.getElementById('activePill').textContent=`Quantum ${selectedQ} ms`;run(selectedQ)}));
+function getProcesses(){return [0,1,2,3].map(i=>({id:'P'+(i+1),name:['Flood-warning analysis','Air-quality alert generation','Emergency evacuation route update','Renewable-grid status monitoring'][i],arrival:Number(document.getElementById('a'+i).value),burst:Number(document.getElementById('b'+i).value),remaining:Number(document.getElementById('b'+i).value),first:null,completion:null}));}
+function simulate(q){
+ const ps=getProcesses(); if(ps.some(p=>!Number.isInteger(p.arrival)||!Number.isInteger(p.burst)||p.arrival<0||p.burst<1))throw Error('Arrival times must be non-negative integers and burst times must be positive integers.');
+ const sorted=[...ps].sort((a,b)=>a.arrival-b.arrival||Number(a.id.slice(1))-Number(b.id.slice(1)));
+ let t=0,idx=0,queue=[],segments=[],prev=null,contextSwitches=0;
+ const addArrivals=()=>{while(idx<sorted.length&&sorted[idx].arrival<=t){queue.push(sorted[idx]);idx++;}};
+ while(ps.some(p=>p.remaining>0)){
+   addArrivals();
+   if(!queue.length){if(idx<sorted.length){let next=sorted[idx].arrival;if(next>t)segments.push({type:'idle',start:t,end:next,label:'IDLE'});t=next;addArrivals();}else break;}
+   const p=queue.shift();
+   if(prev!==null&&prev!==p.id){
+     segments.push({type:'cs',start:t,end:t+1,label:'CS'});t+=1;contextSwitches++;addArrivals();
+   }
+   if(p.first===null)p.first=t;
+   const start=t,duration=Math.min(q,p.remaining);t+=duration;p.remaining-=duration;
+   segments.push({type:'process',id:p.id,index:Number(p.id.slice(1))-1,start,end:t,label:p.id});
+   // Arrivals during the execution slice enter the ready queue before the preempted process is re-queued.
+   addArrivals();
+   if(p.remaining>0)queue.push(p);else p.completion=t;
+   prev=p.id;
+ }
+ const metrics=ps.map(p=>{let tat=p.completion-p.arrival,wt=tat-p.burst,rt=p.first-p.arrival;return {...p,tat,wt,rt};});
+ const totalBurst=ps.reduce((s,p)=>s+p.burst,0),elapsed=t;
+ return {q,ps:metrics,segments,contextSwitches,totalOverhead:contextSwitches,elapsed,totalBurst,efficiency:elapsed?totalBurst/elapsed*100:100,avgTat:metrics.reduce((s,p)=>s+p.tat,0)/ps.length,avgWt:metrics.reduce((s,p)=>s+p.wt,0)/ps.length,avgRt:metrics.reduce((s,p)=>s+p.rt,0)/ps.length};
+}
+function fmt(n){return Number(n).toFixed(2).replace(/\.00$/,'');}
+function renderChart(r){
+ const max=r.elapsed||1;let html='<div class="timeline">';
+ html+='<div class="barrow"><div class="barlabel">CPU timeline</div><div class="bar">';
+ r.segments.forEach(s=>{let w=(s.end-s.start)/max*100;let bg=s.type==='cs'?'':s.type==='idle'?'#64748b':colors[s.index];html+=`<div class="segment ${s.type==='cs'?'cs':''}" title="${s.label}: ${s.start}–${s.end} ms" style="width:${w}%;background:${bg};"><span>${s.label}<br><small>${s.start}–${s.end}</small></span></div>`});
+ html+='</div></div><div class="axis"><span>0 ms</span><span>'+fmt(max)+' ms</span></div></div>';
+ document.getElementById('chart').innerHTML=html;document.getElementById('chartCaption').textContent=`Total elapsed time: ${r.elapsed} ms`;
+}
+function render(r){
+ document.getElementById('activePill').textContent=`Quantum ${r.q} ms`;
+ const stats=[['Elapsed time',r.elapsed+' ms'],['Context switches',r.contextSwitches],['Switch overhead',r.totalOverhead+' ms'],['CPU efficiency',fmt(r.efficiency)+'%'],['Average TAT',fmt(r.avgTat)+' ms'],['Average WT',fmt(r.avgWt)+' ms'],['Average RT',fmt(r.avgRt)+' ms'],['Useful CPU time',r.totalBurst+' ms']];
+ document.getElementById('stats').innerHTML=stats.map(([l,v])=>`<div class="stat"><div class="label">${l}</div><div class="value">${v}</div></div>`).join('');
+ renderChart(r);
+ document.getElementById('metricsTable').innerHTML='<table><thead><tr><th>Process</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead><tbody>'+r.ps.map(p=>`<tr><td><b>${p.id}</b></td><td>${p.completion}</td><td>${p.tat}</td><td>${p.wt}</td><td>${p.rt}</td></tr>`).join('')+'</tbody></table>';
+}
+function run(q=selectedQ){try{let r=simulate(q);lastRuns[q]=r;render(r)}catch(e){alert(e.message)}}
+function compare(){try{let r2=simulate(2),r4=simulate(4);lastRuns[2]=r2;lastRuns[4]=r4;render(selectedQ===2?r2:r4);
+ const rows=[['Average turnaround time (ms)',r2.avgTat,r4.avgTat,'lower'],['Average waiting time (ms)',r2.avgWt,r4.avgWt,'lower'],['Average response time (ms)',r2.avgRt,r4.avgRt,'lower'],['Context switches',r2.contextSwitches,r4.contextSwitches,'lower'],['Total switching overhead (ms)',r2.totalOverhead,r4.totalOverhead,'lower'],['CPU efficiency (%)',r2.efficiency,r4.efficiency,'higher'],['Total elapsed time (ms)',r2.elapsed,r4.elapsed,'lower']];
+ document.getElementById('comparison').innerHTML='<table><thead><tr><th>Metric</th><th>Quantum 2 ms</th><th>Quantum 4 ms</th><th>Better value</th></tr></thead><tbody>'+rows.map(([name,a,b,mode])=>{let win=mode==='higher'?(a>b?2:b>a?4:0):(a<b?2:b<a?4:0);return `<tr><td>${name}</td><td class="${win===2?'winner':''}">${fmt(a)}</td><td class="${win===4?'winner':''}">${fmt(b)}</td><td>${win?'Q='+win+' ms':'Tie'}</td></tr>`}).join('')+'</tbody></table>';
+ let winner;
+ if(r2.avgRt<r4.avgRt&&r2.avgWt<=r4.avgWt)winner='Quantum 2 ms offers the better responsiveness/waiting-time balance for this workload, though it may incur more switching overhead.';
+ else if(r4.contextSwitches<r2.contextSwitches&&r4.avgRt<=r2.avgRt+1)winner='Quantum 4 ms reduces context-switch overhead while keeping average response time within 1 ms of quantum 2 ms for this workload.';
+ else winner='There is a trade-off: use the table to balance response time for emergency processes against context-switch overhead. Choose based on the priority your instructor expects.';
+ document.getElementById('recommendation').textContent=winner;
+ }catch(e){alert(e.message)}}
+document.getElementById('runBtn').addEventListener('click',()=>run(selectedQ));document.getElementById('compareBtn').addEventListener('click',compare);
+document.getElementById('resetBtn').addEventListener('click',()=>{[[0,5],[1,4],[2,3],[3,2]].forEach((v,i)=>{document.getElementById('a'+i).value=v[0];document.getElementById('b'+i).value=v[1]});selectedQ=2;document.querySelectorAll('.qbtn').forEach(b=>b.classList.toggle('active',+b.dataset.q===2));run(2);document.getElementById('comparison').innerHTML='<div class="empty">Click “Compare 2 ms vs 4 ms” to generate the comparison.</div>';document.getElementById('recommendation').textContent='The recommendation will appear after comparison. Consider response time for emergency services alongside overhead and waiting time.'});
+run(2);
+
+// Second-by-second playback controller. The scheduling engine remains the source of truth.
+let playbackTimer=null, playbackTime=0, playbackResult=null, playbackQ=2;
+function stopPlayback(){if(playbackTimer!==null){clearInterval(playbackTimer);playbackTimer=null;}const b=document.getElementById('playBtn');if(b)b.textContent='▶ Play';}
+function preparePlayback(q=selectedQ){
+  stopPlayback(); playbackQ=q; playbackResult=simulate(q); playbackTime=0; paintPlayback();
+}
+function paintPlayback(){
+ if(!playbackResult)return;
+ const r=playbackResult, t=playbackTime, end=r.elapsed;
+ document.getElementById('clockValue').textContent=t+' ms';
+ document.getElementById('progressLabel').textContent=(end?Math.round(t/end*100):100)+'% complete';
+ document.getElementById('progressBar').style.width=(end?t/end*100:100)+'%';
+ const current=r.segments.find(s=>t>=s.start&&t<s.end);
+ let cpu='Idle', selected='—', remain='—', narration='';
+ if(t>=end){cpu='Finished';narration=`Simulation complete at ${end} ms. All processes have completed. There are ${r.contextSwitches} context switches, adding ${r.totalOverhead} ms of overhead.`;}
+ else if(!current){cpu='Idle';narration=`At ${t} ms, the CPU is idle because no process is ready yet.`;}
+ else if(current.type==='cs'){cpu='Context switch';narration=`From ${current.start} to ${current.end} ms, the CPU is performing a context switch. This 1 ms is overhead: no process is doing useful work during this interval.`;}
+ else if(current.type==='idle'){cpu='Idle';narration=`From ${current.start} to ${current.end} ms, the CPU is idle while waiting for the next process to arrive.`;}
+ else {
+   const p=r.ps.find(p=>p.id===current.id);selected=current.id;
+   // Remaining time is the burst still to execute after the current clock instant.
+   const usedBefore=r.segments.filter(s=>s.type==='process'&&s.id===p.id&&s.end<=t).reduce((a,s)=>a+s.end-s.start,0);
+   const inCurrent=Math.max(0,Math.min(t,current.end)-current.start);
+   const remaining=Math.max(0,p.burst-usedBefore-inCurrent);
+   remain=remaining+' ms';cpu='Executing '+current.id;
+   narration=`From ${current.start} to ${current.end} ms, ${current.id} (${p.name}) is using the CPU. It executes for ${current.end-current.start} ms in this time slice. ${remaining>0?`At the current clock, about ${remaining} ms of its CPU burst remains after the elapsed portion.`:'This process has finished its CPU burst by the end of this interval.'}`;
+ }
+ document.getElementById('cpuNow').textContent=cpu;document.getElementById('selectedNow').textContent=selected;document.getElementById('remainNow').textContent=remain;
+ document.getElementById('eventNarration').textContent=narration;
+ document.getElementById('playStatus').textContent=t>=end?'Complete':(playbackTimer!==null?'Playing':'Paused');
+ const queueBox=document.getElementById('queueNow');
+ // Reconstruct a readable ready queue by replaying the deterministic event rules up to t.
+ const sim=queueAtTime(r,t);
+ queueBox.innerHTML=sim.queue.length?sim.queue.map(id=>`<span class="pill">${id}</span>`).join(''):'<span class="small">Queue is empty</span>';
+ document.getElementById('processStatusNow').innerHTML='<table><thead><tr><th>Process</th><th>Remaining burst</th><th>Status</th></tr></thead><tbody>'+r.ps.map(p=>{
+   const executed=r.segments.filter(s=>s.type==='process'&&s.id===p.id&&s.start<t).reduce((a,s)=>a+Math.max(0,Math.min(s.end,t)-s.start),0);
+   const rem=Math.max(0,p.burst-executed);let status=rem===0&&p.completion<=t?'Completed':(current&&current.type==='process'&&current.id===p.id?'Running':(p.arrival>t?'Not arrived':'Ready / waiting'));
+   return `<tr><td><b>${p.id}</b></td><td>${rem} ms</td><td>${status}</td></tr>`;
+ }).join('')+'</tbody></table>';
+ // Progressive Gantt: reveal only the timeline that has happened so far.
+ const shown={...r,elapsed:Math.max(1,t),segments:r.segments.filter(s=>s.start<t).map(s=>({...s,end:Math.min(s.end,t)})).filter(s=>s.end>s.start)};
+ if(t===0)document.getElementById('chart').innerHTML='<div class="empty">Press Play or Step +1 ms to reveal the Gantt chart.</div>';else renderChart(shown);
+}
+function queueAtTime(r,t){
+ const ps=getProcesses().sort((a,b)=>a.arrival-b.arrival||Number(a.id.slice(1))-Number(b.id.slice(1)));
+ let queue=[],idx=0,now=0,prev=null;
+ const add=()=>{while(idx<ps.length&&ps[idx].arrival<=now){queue.push(ps[idx]);idx++;}};
+ while(now<t && ps.some(p=>p.remaining>0)){
+   add();if(!queue.length){if(idx<ps.length){now=ps[idx].arrival;add()}else break}
+   const p=queue.shift();
+   if(prev!==null&&prev!==p.id){now+=1;add();if(now>=t)return {queue:queue.map(x=>x.id)};}
+   const d=Math.min(playbackQ,p.remaining);const finish=now+d;
+   if(finish>t){return {queue:queue.map(x=>x.id)};}
+   now=finish;p.remaining-=d;add();if(p.remaining>0)queue.push(p);prev=p.id;
+ }
+ return {queue:queue.map(x=>x.id)};
+}
+function advancePlayback(){if(!playbackResult)preparePlayback(selectedQ);if(playbackTime>=playbackResult.elapsed){stopPlayback();paintPlayback();return;}playbackTime=Math.min(playbackTime+1,playbackResult.elapsed);paintPlayback();if(playbackTime>=playbackResult.elapsed)stopPlayback();}
+document.getElementById('playBtn').addEventListener('click',()=>{if(!playbackResult||playbackQ!==selectedQ)preparePlayback(selectedQ);if(playbackTime>=playbackResult.elapsed)preparePlayback(selectedQ);if(playbackTimer===null){document.getElementById('playBtn').textContent='▶ Playing…';playbackTimer=setInterval(advancePlayback,Number(document.getElementById('speedSelect').value));paintPlayback();}});
+document.getElementById('pauseBtn').addEventListener('click',()=>{stopPlayback();paintPlayback();});
+document.getElementById('stepBtn').addEventListener('click',()=>{if(!playbackResult||playbackQ!==selectedQ)preparePlayback(selectedQ);stopPlayback();advancePlayback();});
+document.getElementById('playResetBtn').addEventListener('click',()=>preparePlayback(selectedQ));
+document.getElementById('speedSelect').addEventListener('change',()=>{if(playbackTimer!==null){stopPlayback();document.getElementById('playBtn').click();}});
+const originalRun=run;
+run=function(q=selectedQ){originalRun(q);preparePlayback(q);};
+
+</script></body></html>
